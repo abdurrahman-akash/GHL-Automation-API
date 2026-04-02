@@ -1,0 +1,117 @@
+# --- OS generated files ---
+.DS_Store
+.DS_Store?
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100/
+.Trashes/
+._*
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Env / local config ---
+.env
+.env.*
+*.local
+
+# --- Archives ---
+*.7z
+*.gz
+*.zip
+*.tar
+*.tgz
+*.bz2
+*.rar
+
+# --- Dependency directories ---
+node_modules/
+vendor/
+
+# --- Build outputs ---
+dist/
+build/
+out/
+target/
+bin/
+obj/
+tmp/
+temp/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# --- Java / Kotlin / Gradle ---
+.gradle/
+*.class
+
+# --- Go ---
+*.test
+.coverprofile
+
+# --- Rust ---
+target/
+Cargo.lock
+
+# --- .NET ---
+*.rsuser
+
+# --- C / C++ / CMake ---
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+Makefile
+
+# --- Swift / Xcode ---
+.build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# --- Serverless ---
+.serverless/
+.aws-sam/
+
+# --- Misc ---
+*.pid
+*.seed
+*.pid.lock
