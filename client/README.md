@@ -1,4 +1,9 @@
-This is a Next.js app to fetch all contacts from GoHighLevel (GHL) and run a bulk duplicate check for email and phone status.
+Production-grade Next.js client for a multi-tenant SaaS workflow that:
+
+- Connects a GHL tenant (location ID + API key)
+- Receives and stores tenant access key in memory
+- Runs duplicate checks for email/phone
+- Displays dashboard-level backend and sync status
 
 ## Getting Started
 
@@ -16,37 +21,50 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## GHL Configuration
+## Environment
 
 Create a `.env.local` file in the project root:
 
 ```bash
-GHL_API_BASE_URL=https://services.leadconnectorhq.com
-APP_ACCESS_KEY=your_private_access_key_here
-GHL_API_VERSION=2021-07-28
-GHL_CONTACT_PAGE_LIMIT=100
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# Optional sync endpoints if your backend exposes them
+NEXT_PUBLIC_SYNC_TRIGGER_PATH=/api/v1/sync/trigger
+NEXT_PUBLIC_SYNC_STATUS_PATH=/api/v1/sync/status
 ```
 
-Required values:
+Required:
 
-- `APP_ACCESS_KEY`
+- `NEXT_PUBLIC_API_BASE_URL`
 
-Then run the app and fill this form on the page:
+## Routes
 
-- `GHL_API_KEY` (provided by user)
-- `GHL_LOCATION_ID` (provided by user)
-- `Access Key` (provided by admin, must match `APP_ACCESS_KEY`)
+- `/connect` - Connect GHL and receive tenant access key
+- `/dashboard` - View location, backend health, sync state, and last sync time
+- `/duplicate-check` - Test duplicate detection by email and/or phone
 
-After that, click **Fetch All Contacts**. You can choose grouping by name or email, select a bulk value, and view each contact status:
+## Architecture
 
-- `Unique`
-- `Duplicate`
-- `Missing`
+- `src/lib` - Axios instance + API service functions
+- `src/hooks` - React Query hooks only
+- `src/store` - Zustand auth/session state (in-memory)
+- `src/components/ui` - Reusable UI primitives
+- `src/components/forms` - Feature form components
+- `src/app` - Route pages only
 
-Main files:
+## Security Notes
 
-- `src/app/page.tsx` (bulk duplicate checker UI)
-- `src/app/api/ghl/contacts/route.ts` (server-side GHL fetch + pagination)
+- GHL API key is not stored after successful connect submission.
+- Access key is kept in memory only (not in local storage).
+- Auth header injection is centralized in request interceptor.
+
+## Testing
+
+Run lint and tests:
+
+```bash
+pnpm lint
+pnpm test
+```
 
 ## Learn More
 

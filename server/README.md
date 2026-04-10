@@ -1,152 +1,183 @@
-# Duplicate Contact Check API
+# GHL Duplicate Backend (Multi-Tenant)
 
-A lightweight external API that sits between a **GoHighLevel (GHL) workflow** and GHL's Contacts API. It checks whether a phone number already exists in your CRM and returns a `unique` or `duplicate` result back to the workflow.
+Production-grade Node.js backend for GoHighLevel duplicate detection with:
 
----
+- MongoDB as source of truth
+- Redis for ultra-fast duplicate lookup
+- BullMQ for asynchronous background sync
+- Webhook ingestion for near real-time updates
 
-## How It Works
+## Tech Stack
 
-```
-GHL Workflow
-    │
-    │  POST /api/check-duplicate
-    │  Header: x-api-key: <your GHL API key>
-    │  Body:   { phone, contactId, locationId }
-    ▼
-This API (Vercel / local)
-    │
-    │  Calls GHL Contacts Search API using the key from the header
-    ▼
-GHL Contacts API
-    │
-    │  Returns contacts matching that phone number
-    ▼
-This API
-    │
-    │  matchCount > 1  →  "duplicate"
-    │  matchCount = 1  →  "unique"
-    ▼
-Response → GHL Workflow branches and tags the contact
-```
+- Node.js + Express
+- MongoDB + Mongoose
+- Redis + ioredis
+- BullMQ
+- Axios
+- Zod validation
+- Vitest unit tests
 
----
-
-## Project Structure
+## Folder Structure
 
 ```
-├── index.js                  # Express server entry point
-├── api/
-│   └── check-duplicate.js    # Route handler
-├── package.json
+server/
+  app.js
+  index.js
+  config/
+  jobs/
+  middleware/
+  models/
+  modules/
+    auth/
+    duplicate/
+    webhook/
+  services/
+  utils/
+  tests/
 ```
 
----
+## Environment Setup
 
-## Getting Started
+Copy `.env.example` to `.env` and fill values.
 
-### 1. Install dependencies
+Required variables:
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `ACCESS_KEY_SECRET`
+
+Recommended access-key cookie variables:
+
+- `ACCESS_KEY_COOKIE_NAME` (default: `ghl_access_key`)
+- `ACCESS_KEY_COOKIE_SECURE` (`true` in production)
+- `ACCESS_KEY_COOKIE_SAME_SITE` (`lax`, `strict`, or `none`)
+- `ACCESS_KEY_COOKIE_MAX_AGE_MS` (default: 30 days)
+- `ACCESS_KEY_COOKIE_DOMAIN` (optional)
+
+## Run
 
 ```bash
 pnpm install
+pnpm dev
 ```
 
-### 2. Run locally
+## API Endpoints
+
+### 1) Connect GHL
+
+`POST /api/v1/auth/connect-ghl`
+
+Request body:
+
+```json
+{
+  "locationId": "abc123",
+  "ghlApiKey": "ghl_private_api_key"
+}
+```
+
+Response:
+
+```json
+{
+  "message": "GHL account connected successfully",
+  "accessKey": "ak_..."
+}
+```
+
+Behavior:
+
+- Stores tenant credentials in MongoDB
+- Generates internal `accessKey`
+- Enqueues async contact sync job
+
+### 2) Duplicate Check
+
+`POST /api/v1/duplicate/check`
+
+Headers:
+
+- `x-access-key: <tenant-access-key>`
+
+Authentication behavior:
+
+- Header-first: `x-access-key` is always preferred when provided.
+- Fallback: if header is missing, backend also accepts access key from an HttpOnly cookie.
+
+Request body:
+
+```json
+{
+  "email": "test@example.com",
+  "phone": "+14155550100"
+}
+```
+
+Response:
+
+```json
+{
+  "email": "duplicate",
+  "phone": "unique"
+}
+```
+
+Use these values directly in your GHL workflow conditions:
+
+- `email == duplicate` or `email == unique`
+- `phone == duplicate` or `phone == unique`
+
+Important: this endpoint uses Redis only and does not query MongoDB.
+
+### GHL Custom Webhook Setup (Automation)
+
+Use this when calling duplicate check from GHL workflows:
+
+- Method: `POST`
+- URL: `https://<your-backend>/api/v1/duplicate/check`
+- Header: `x-access-key: ak_...`
+- Content-Type: `application/json`
+- Body example:
+
+```json
+{
+  "email": "{{contact.email}}",
+  "phone": "{{contact.phone}}"
+}
+```
+
+Important: GHL server-to-server calls should always pass `x-access-key` header. Cookie fallback is mainly for browser-based app flows.
+
+### 3) Webhook Ingestion
+
+`POST /api/v1/webhook/ghl`
+
+Body accepts either:
+
+- `{ "contact": { ... } }`
+- or raw contact fields including `locationId`
+
+The handler upserts MongoDB and updates Redis cache.
+
+## Sync Workflow
+
+- Queue name: `contact-sync`
+- Worker fetches contacts from GHL in paginated pages
+- Each page is normalized and upserted into MongoDB
+- Redis keys are indexed via pipeline:
+  - `email:{locationId}:{email}`
+  - `phone:{locationId}:{phone}`
+- Scheduler periodically enqueues sync for all tenants
+
+## Testing
+
+Run unit tests:
 
 ```bash
-pnpm start        # runs on http://localhost:8000
-pnpm dev          # auto-restarts on file changes (Node 18+)
+pnpm test
 ```
 
----
+Covered basics:
 
-## API Reference
-
-### `POST /api/check-duplicate`
-
-#### Headers
-
-| Header      | Required | Description                        |
-|-------------|----------|------------------------------------|
-| `x-api-key` | Yes      | Your GHL API key                   |
-| `Content-Type` | Yes   | `application/json`                 |
-
-#### Request Body
-
-```json
-{
-  "phone": "+1234567890",
-  "contactId": "abc123",
-  "locationId": "xyz456"
-}
-```
-
-| Field        | Required | Description                          |
-|--------------|----------|--------------------------------------|
-| `phone`      | Yes      | Phone number to check                |
-| `contactId`  | No       | GHL contact ID (echoed in response)  |
-| `locationId` | No       | GHL location/sub-account ID          |
-
-#### Response — Unique
-
-```json
-{
-  "status": "unique",
-  "contactId": "abc123",
-  "phone": "+1234567890",
-  "matchCount": 1
-}
-```
-
-#### Response — Duplicate
-
-```json
-{
-  "status": "duplicate",
-  "contactId": "abc123",
-  "phone": "+1234567890",
-  "matchCount": 3
-}
-```
-
-#### Error Responses
-
-| Status | Message                              | Cause                          |
-|--------|--------------------------------------|--------------------------------|
-| `400`  | Missing required field: phone        | `phone` not in body            |
-| `401`  | Missing x-api-key header             | No API key provided            |
-| `405`  | Method not allowed                   | Request is not POST            |
-| `502`  | Failed to fetch contacts from GHL    | GHL API returned an error      |
-| `502`  | Network error while contacting GHL API | Connection failure            |
-
----
-
-## GHL Workflow Setup
-
-1. Add a **Webhook** action to your workflow (triggered on contact create / phone update).
-2. Configure it:
-   - **URL:** `https://your-vercel-app.vercel.app/api/check-duplicate`
-   - **Method:** `POST`
-   - **Headers:**
-     ```
-     x-api-key: your_ghl_api_key
-     Content-Type: application/json
-     ```
-   - **Body:**
-     ```json
-     {
-       "phone": "{{contact.phone}}",
-       "contactId": "{{contact.id}}",
-       "locationId": "{{location.id}}"
-     }
-     ```
-3. Add an **If/Else** branch on `status == "duplicate"` to tag the contact accordingly.
-
----
-
-## Deploy to Vercel
-
-```bash
-vercel deploy
-```
-
-No environment variables are required — the GHL API key is passed per-request via the `x-api-key` header.
+- Email/phone normalization
+- Duplicate check service behavior with mocked Redis

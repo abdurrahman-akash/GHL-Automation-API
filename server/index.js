@@ -1,17 +1,49 @@
-import express from "express";
-import handler from "./api/check-duplicate.js";
-import getAllContactsHandler from "./api/getAllContact.js";
-import dotenv from "dotenv";
+import { env } from "./config/env.js";
+import { connectDatabase, disconnectDatabase } from "./config/database.js";
+import { initRedis, closeRedis } from "./services/redis.service.js";
+import { startContactSyncWorker, stopContactSyncWorker } from "./jobs/contact-sync.worker.js";
+import { startContactSyncScheduler, stopContactSyncScheduler } from "./jobs/contact-sync.scheduler.js";
+import { contactSyncQueue } from "./jobs/contact-sync.queue.js";
+import { logger } from "./utils/logger.js";
+import { createApp } from "./app.js";
 
-dotenv.config();
+const app = createApp();
+let server;
 
-const app = express();
-app.use(express.json());
+const bootstrap = async () => {
+  await connectDatabase();
+  await initRedis();
 
-app.post("/api/check-duplicate", handler);
-app.post("/api/get-all-contacts", getAllContactsHandler);
+  if (env.ENABLE_SYNC_WORKER) {
+    startContactSyncWorker();
+    startContactSyncScheduler();
+  }
 
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  server = app.listen(env.PORT, () => {
+    logger.info({ port: env.PORT }, "Server started");
+  });
+};
+
+const gracefulShutdown = async (signal) => {
+  logger.info({ signal }, "Shutting down server");
+
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
+  }
+
+  await stopContactSyncWorker();
+  stopContactSyncScheduler();
+  await contactSyncQueue.close();
+  await closeRedis();
+  await disconnectDatabase();
+
+  process.exit(0);
+};
+
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
+
+bootstrap().catch((error) => {
+  logger.error({ err: error }, "Failed to start application");
+  process.exit(1);
 });
