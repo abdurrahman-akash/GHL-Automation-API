@@ -127,7 +127,7 @@ Use these values directly in your GHL workflow conditions:
 - `email == duplicate` or `email == unique`
 - `phone == duplicate` or `phone == unique`
 
-Important: this endpoint uses Redis only and does not query MongoDB.
+Important: this endpoint reads from Redis indexes for speed and verifies counts against MongoDB as source of truth.
 
 ### GHL Custom Webhook Setup (Automation)
 
