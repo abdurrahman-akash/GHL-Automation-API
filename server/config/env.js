@@ -4,7 +4,13 @@ import { z } from "zod";
 dotenv.config();
 
 const envSchema = z.object({
-  // NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  // Normalize NODE_ENV so accidental casing/whitespace doesn't crash production startup.
+  NODE_ENV: z
+    .preprocess(
+      (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
+      z.enum(["development", "test", "production"])
+    )
+    .catch("development"),
   PORT: z
     .string()
     .default("8000")
