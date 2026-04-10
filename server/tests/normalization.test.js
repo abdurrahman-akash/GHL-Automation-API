@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeEmail, normalizePhone } from "../utils/normalization.js";
+import { expandPhoneLookupVariants, normalizeEmail, normalizePhone } from "../utils/normalization.js";
 
 describe("normalization utils", () => {
   it("normalizes email by trimming and lower-casing", () => {
@@ -17,5 +17,21 @@ describe("normalization utils", () => {
 
   it("normalizes local phone to digits", () => {
     expect(normalizePhone(" 0044-7700-900123 ")).toBe("447700900123");
+  });
+
+  it("normalizes Bangladesh local mobile to E.164", () => {
+    expect(normalizePhone("01303647863")).toBe("+8801303647863");
+  });
+
+  it("normalizes 880-prefixed mobile to E.164", () => {
+    expect(normalizePhone("8801303647863")).toBe("+8801303647863");
+  });
+
+  it("builds lookup variants for historical phone formats", () => {
+    expect(expandPhoneLookupVariants("01303647863")).toEqual([
+      "+8801303647863",
+      "8801303647863",
+      "01303647863"
+    ]);
   });
 });

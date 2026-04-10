@@ -2,6 +2,7 @@ import Redis from "ioredis";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 import { Contact } from "../models/contact.model.js";
+import { expandPhoneLookupVariants } from "../utils/normalization.js";
 
 let redisClient;
 
@@ -132,6 +133,7 @@ export const indexContactsInRedis = async (locationId, contacts) => {
 export const checkDuplicateLookup = async ({ locationId, email, phone }) => {
   const redis = getRedisClient();
   const pipeline = redis.pipeline();
+  const phoneVariants = phone ? expandPhoneLookupVariants(phone) : [];
 
   if (email) {
     pipeline.scard(buildEmailKey(locationId, email));
@@ -150,7 +152,14 @@ export const checkDuplicateLookup = async ({ locationId, email, phone }) => {
   try {
     const [mongoEmailCount, mongoPhoneCount] = await Promise.all([
       email ? Contact.countDocuments({ locationId, email }) : Promise.resolve(0),
-      phone ? Contact.countDocuments({ locationId, phone }) : Promise.resolve(0)
+      phone
+        ? Contact.countDocuments({
+            locationId,
+            phone: {
+              $in: phoneVariants.length ? phoneVariants : [phone]
+            }
+          })
+        : Promise.resolve(0)
     ]);
 
     // MongoDB remains source of truth; Redis is used for fast indexing.
