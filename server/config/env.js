@@ -58,7 +58,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.string().default("info"),
   CLIENT_ORIGIN: z
     .string()
-    .default("http://localhost:3000")
+    .default("http://localhost:3000, https://ghl-automation-api.vercel.app")
     .transform((value) =>
       value
         .split(",")
