@@ -12,6 +12,10 @@ export const initRedis = async () => {
     return redisClient;
   }
 
+  if (!env.REDIS_URL) {
+    throw new Error("REDIS_URL is not configured");
+  }
+
   redisClient = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     enableReadyCheck: true,

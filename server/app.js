@@ -15,10 +15,23 @@ import { errorHandler } from "./middleware/error-handler.middleware.js";
 
 export const createApp = () => {
   const app = express();
+  const allowedOrigins = env.CLIENT_ORIGIN;
 
   app.use(
     cors({
-      origin: env.CLIENT_ORIGIN,
+      origin(origin, callback) {
+        // Allow non-browser requests (no Origin header) like server-to-server webhooks.
+        if (!origin) {
+          return callback(null, true);
+        }
+
+        const normalizedOrigin = origin.replace(/\/$/, "");
+        if (allowedOrigins.includes(normalizedOrigin)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("Origin is not allowed by CORS"));
+      },
       credentials: true
     })
   );
@@ -64,8 +77,27 @@ const initializeRuntime = async () => {
   return runtimeInitPromise;
 };
 
+const shouldInitializeRuntime = (url) => {
+  if (!url || typeof url !== "string") {
+    return false;
+  }
+
+  return url === "/health" || url.startsWith("/api/");
+};
+
 // Vercel Node.js runtime requires a default export function for serverless entry files.
 export default async function handler(req, res) {
-  await initializeRuntime();
+  if (shouldInitializeRuntime(req.url)) {
+    try {
+      await initializeRuntime();
+    } catch (error) {
+      logger.error({ err: error, url: req.url }, "Runtime initialization failed");
+      return res.status(503).json({
+        message: "Backend dependencies are not available",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined
+      });
+    }
+  }
+
   return app(req, res);
 }

@@ -15,11 +15,14 @@ const envSchema = z.object({
     .string()
     .default("8000")
     .transform((value) => Number(value)),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  REDIS_URL: z.string().min(1, "REDIS_URL is required"),
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required").catch(""),
+  REDIS_URL: z.string().min(1, "REDIS_URL is required").catch(""),
   GHL_API_BASE_URL: z.string().default("https://services.leadconnectorhq.com"),
   GHL_API_VERSION: z.string().default("2021-07-28"),
-  ACCESS_KEY_SECRET: z.string().min(16, "ACCESS_KEY_SECRET must be at least 16 chars"),
+  ACCESS_KEY_SECRET: z
+    .string()
+    .min(16, "ACCESS_KEY_SECRET must be at least 16 chars")
+    .catch("development-access-key-secret"),
   ACCESS_KEY_COOKIE_NAME: z.string().default("ghl_access_key"),
   ACCESS_KEY_COOKIE_SECURE: z
     .string()
@@ -53,14 +56,22 @@ const envSchema = z.object({
     .transform((value) => value === "true"),
   GHL_WEBHOOK_SECRET: z.string().optional(),
   LOG_LEVEL: z.string().default("info"),
-  CLIENT_ORIGIN: z.string().default("http://localhost:3000, https://ghl-automation-api.vercel.app/")
+  CLIENT_ORIGIN: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((origin) => origin.trim().replace(/\/$/, ""))
+        .filter(Boolean)
+    )
 });
 
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
   const errors = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
-  throw new Error(`Invalid environment variables: ${errors}`);
+  console.warn(`Environment validation warnings: ${errors}`);
 }
 
-export const env = parsed.data;
+export const env = envSchema.parse(process.env);
