@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import type { DuplicateStatus } from "@/lib/types";
 
 type DuplicateErrors = {
   email?: string;
@@ -60,6 +61,12 @@ export function DuplicateCheckForm() {
     });
   };
 
+  const statusToBadgeVariant = (status: DuplicateStatus) => {
+    if (status === "duplicate") return "duplicate";
+    if (status === "unique") return "unique";
+    return "unavailable";
+  };
+
   return (
     <Card>
       <CardTitle>Test Duplicate Detection</CardTitle>
@@ -110,7 +117,7 @@ export function DuplicateCheckForm() {
           <Card className="border-slate-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email status</p>
             <div className="mt-2">
-              <Badge variant={duplicateCheckMutation.data.email === "duplicate" ? "duplicate" : "unique"}>
+              <Badge variant={statusToBadgeVariant(duplicateCheckMutation.data.email)}>
                 {duplicateCheckMutation.data.email}
               </Badge>
             </div>
@@ -119,7 +126,7 @@ export function DuplicateCheckForm() {
           <Card className="border-slate-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone status</p>
             <div className="mt-2">
-              <Badge variant={duplicateCheckMutation.data.phone === "duplicate" ? "duplicate" : "unique"}>
+              <Badge variant={statusToBadgeVariant(duplicateCheckMutation.data.phone)}>
                 {duplicateCheckMutation.data.phone}
               </Badge>
             </div>

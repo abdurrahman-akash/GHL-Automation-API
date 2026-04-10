@@ -1,4 +1,4 @@
-export type DuplicateStatus = "duplicate" | "unique";
+export type DuplicateStatus = "duplicate" | "unique" | "null";
 
 export type ConnectGhlPayload = {
   locationId: string;

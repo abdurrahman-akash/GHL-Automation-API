@@ -124,10 +124,14 @@ Response:
 
 Use these values directly in your GHL workflow conditions:
 
-- `email == duplicate` or `email == unique`
-- `phone == duplicate` or `phone == unique`
+- `email == duplicate`, `email == unique`, or `email == null`
+- `phone == duplicate`, `phone == unique`, or `phone == null`
 
 Important: this endpoint reads from Redis indexes for speed and verifies counts against MongoDB as source of truth.
+
+Cold-start behavior:
+
+- If a tenant has never synced (`lastSyncedAt` is empty) and first lookup returns `unique`, backend runs an on-demand full sync before returning final result.
 
 ### GHL Custom Webhook Setup (Automation)
 
@@ -165,8 +169,8 @@ The handler upserts MongoDB and updates Redis cache.
 - Worker fetches contacts from GHL in paginated pages
 - Each page is normalized and upserted into MongoDB
 - Redis keys are indexed via pipeline:
-  - `email:{locationId}:{email}`
-  - `phone:{locationId}:{phone}`
+  - `dup:v2:{locationId}:email:{email}` (Redis Set of contact IDs)
+  - `dup:v2:{locationId}:phone:{phone}` (Redis Set of contact IDs)
 - Scheduler periodically enqueues sync for all tenants
 
 ## Testing

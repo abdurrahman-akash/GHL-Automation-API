@@ -2,6 +2,8 @@ import { Contact } from "../models/contact.model.js";
 import { normalizeEmail, normalizePhone } from "../utils/normalization.js";
 import { indexContactsInRedis } from "./redis.service.js";
 import { fetchContactsPage } from "./ghl.service.js";
+import { env } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 
 export const normalizeContact = (contact, locationId) => ({
   locationId,
@@ -54,5 +56,33 @@ export const syncContactsPage = async ({ ghlApiKey, locationId, page, limit }) =
   return {
     syncedCount,
     hasMore
+  };
+};
+
+export const syncAllContactsForTenant = async ({ ghlApiKey, locationId, limit = env.CONTACT_SYNC_PAGE_SIZE }) => {
+  let page = 1;
+  let hasMore = true;
+  let totalSynced = 0;
+  const maxPages = 500;
+
+  while (hasMore && page <= maxPages) {
+    const { syncedCount, hasMore: pageHasMore } = await syncContactsPage({
+      ghlApiKey,
+      locationId,
+      page,
+      limit
+    });
+
+    totalSynced += syncedCount;
+    hasMore = pageHasMore;
+    page += 1;
+  }
+
+  if (hasMore) {
+    logger.warn({ locationId, maxPages }, "Stopped tenant sync early due to max page safety limit");
+  }
+
+  return {
+    totalSynced
   };
 };

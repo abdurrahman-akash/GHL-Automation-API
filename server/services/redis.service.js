@@ -160,8 +160,8 @@ export const checkDuplicateLookup = async ({ locationId, email, phone }) => {
     logger.warn({ err: error, locationId }, "Falling back to Redis-only duplicate counts");
   }
 
-  const emailStatus = email && emailCount > 1 ? "duplicate" : "unique";
-  const phoneStatus = phone && phoneCount > 1 ? "duplicate" : "unique";
+  const emailStatus = !email ? "null" : emailCount > 1 ? "duplicate" : "unique";
+  const phoneStatus = !phone ? "null" : phoneCount > 1 ? "duplicate" : "unique";
 
   return {
     email: emailStatus,
