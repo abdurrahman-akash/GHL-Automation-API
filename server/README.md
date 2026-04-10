@@ -156,10 +156,17 @@ Important: GHL server-to-server calls should always pass `x-access-key` header. 
 
 `POST /api/v1/webhook/ghl`
 
+Headers:
+
+- `x-webhook-secret: <GHL_WEBHOOK_SECRET>` (if configured)
+- `x-location-id: <locationId>` (optional fallback when payload cannot include locationId)
+
 Body accepts either:
 
 - `{ "contact": { ... } }`
 - or raw contact fields including `locationId`
+
+If `locationId` is unavailable in GHL body expressions, pass it using `x-location-id` header.
 
 The handler upserts MongoDB and updates Redis cache.
 
@@ -172,6 +179,12 @@ The handler upserts MongoDB and updates Redis cache.
   - `dup:v2:{locationId}:email:{email}` (Redis Set of contact IDs)
   - `dup:v2:{locationId}:phone:{phone}` (Redis Set of contact IDs)
 - Scheduler periodically enqueues sync for all tenants
+
+### Manual Sync Endpoint Behavior
+
+- `POST /api/v1/sync/trigger` now performs an immediate full sync for the authenticated tenant.
+- Response returns `syncStatus: completed` with `syncedCount` and `lastSyncedAt` when successful.
+- This avoids queue-wait issues in serverless deployments where background workers may not be continuously running.
 
 ## Testing
 

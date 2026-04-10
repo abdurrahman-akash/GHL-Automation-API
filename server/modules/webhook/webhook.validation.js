@@ -3,7 +3,7 @@ import { z } from "zod";
 export const webhookContactSchema = z.object({
   id: z.string().optional(),
   contactId: z.string().optional(),
-  locationId: z.string().min(1),
+  locationId: z.string().min(1).optional(),
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable()
 });

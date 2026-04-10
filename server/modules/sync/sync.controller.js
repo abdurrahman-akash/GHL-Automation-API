@@ -6,7 +6,7 @@ export const triggerSyncController = asyncHandler(async (req, res) => {
     locationId: req.tenant.locationId
   });
 
-  res.status(202).json(result);
+  res.status(200).json(result);
 });
 
 export const getSyncStatusController = asyncHandler(async (req, res) => {
